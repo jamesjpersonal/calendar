@@ -20,10 +20,9 @@ calendar/
 
 1. Install dependencies (none required beyond Node.js 18+, but running `npm install` in
    `server/` will create a lockfile for deployment platforms that expect one).
-2. Start the backend server:
+2. Start the backend server from the repo root:
 
    ```bash
-   cd server
    npm start
    ```
 
@@ -50,12 +49,12 @@ Data is stored in `server/data.json`, which is created automatically on first ru
 ### Railway
 
 Railway can run the backend directly. Add a new service that deploys this
-repository and set the **Start Command** to `./start.sh` so the platform runs the
-helper script committed at the repo root. The script changes into the
-`server/` directory, installs dependencies if needed, and starts the Node.js
-process. Expose port `4000` (or override it with the `PORT` environment
-variable) and mount a persistent volume to `server/data.json` so event data
-survives restarts.
+repository and set the **Start Command** to `npm start` (or `./start.sh` if you
+prefer to call the script directly) so the platform runs the helper script
+committed at the repo root. The script changes into the `server/` directory,
+installs dependencies if needed, and starts the Node.js process. Expose port
+`4000` (or override it with the `PORT` environment variable) and mount a
+persistent volume to `server/data.json` so event data survives restarts.
 
 The `start.sh` script also works for other platforms that allow a shell entrypoint
 (e.g., Fly.io, Render, custom Docker images). It ensures dependencies are installed

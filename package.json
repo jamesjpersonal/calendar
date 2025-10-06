@@ -1,0 +1,13 @@
+{
+  "name": "calendar-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Calendar web app with Node backend",
+  "scripts": {
+    "start": "./start.sh",
+    "server": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
