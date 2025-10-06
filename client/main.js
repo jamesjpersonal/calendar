@@ -8,6 +8,7 @@ const eventFeedback = document.getElementById('event-feedback');
 const categoryForm = document.getElementById('category-form');
 const categoryFeedback = document.getElementById('category-feedback');
 const categorySelect = document.getElementById('category-select');
+const categoryColorSelect = document.getElementById('category-color-select');
 const categoryList = document.getElementById('category-list');
 const eventTemplate = document.getElementById('event-template');
 const eventListPanel = document.getElementById('event-list-panel');
@@ -15,9 +16,41 @@ const eventListPanel = document.getElementById('event-list-panel');
 const API_BASE = '';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const COLOR_PALETTE = [
+  { name: 'Sky', value: '#38bdf8' },
+  { name: 'Ocean', value: '#0ea5e9' },
+  { name: 'Azure', value: '#2563eb' },
+  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Violet', value: '#8b5cf6' },
+  { name: 'Magenta', value: '#d946ef' },
+  { name: 'Pink', value: '#ec4899' },
+  { name: 'Rose', value: '#f87171' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Amber', value: '#f59e0b' },
+  { name: 'Sunrise', value: '#fbbf24' },
+  { name: 'Lime', value: '#84cc16' },
+  { name: 'Emerald', value: '#10b981' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Slate', value: '#64748b' }
+];
 let currentDate = new Date();
 let categories = [];
 let events = [];
+
+function parseISODateOnly(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  const parts = value.split('-');
+  if (parts.length !== 3) {
+    return null;
+  }
+  const [year, month, day] = parts.map(Number);
+  if ([year, month, day].some(number => Number.isNaN(number))) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
 
 WEEKDAYS.forEach(day => {
   const span = document.createElement('span');
@@ -61,6 +94,28 @@ function populateCategorySelect() {
     option.textContent = `${category.emoji} ${category.name}`;
     categorySelect.appendChild(option);
   });
+}
+
+function populateCategoryColorSelect() {
+  if (!categoryColorSelect) {
+    return;
+  }
+  const previous = categoryColorSelect.value;
+  categoryColorSelect.innerHTML = '';
+  COLOR_PALETTE.forEach(({ name, value }) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = `${name} ${value}`;
+    option.dataset.color = value;
+    categoryColorSelect.appendChild(option);
+  });
+  if (previous && COLOR_PALETTE.some(option => option.value === previous)) {
+    categoryColorSelect.value = previous;
+  }
+  if (!categoryColorSelect.value && COLOR_PALETTE.length) {
+    categoryColorSelect.value = COLOR_PALETTE[0].value;
+  }
+  updateCategoryColorPreview();
 }
 
 function renderCategories() {
@@ -159,13 +214,16 @@ function renderCalendar() {
     eventContainer.className = 'event-list';
 
     const dayEvents = events.filter(event => {
-      const start = new Date(event.startDate);
-      const end = new Date(event.endDate || event.startDate);
+      const start = parseISODateOnly(event.startDate);
+      const end = parseISODateOnly(event.endDate || event.startDate);
+      if (!start || !end) {
+        return false;
+      }
       return start <= date && date <= end;
     });
 
     const colors = dayEvents
-      .map(event => event.category?.color)
+      .map(event => resolveEventCategory(event)?.color)
       .filter(Boolean);
     if (colors.length > 0) {
       applyDayAccent(cell, colors);
@@ -175,8 +233,9 @@ function renderCalendar() {
       const pill = eventTemplate.content.firstElementChild.cloneNode(true);
       const emojiSpan = pill.querySelector('.emoji');
       const textSpan = pill.querySelector('.text');
-      const color = event.category?.color || '#cbd5f5';
-      const emoji = event.category?.emoji || '📌';
+      const category = resolveEventCategory(event);
+      const color = category?.color || '#cbd5f5';
+      const emoji = category?.emoji || '📌';
 
       pill.style.background = color;
       emojiSpan.textContent = emoji;
@@ -214,17 +273,38 @@ function renderEventList() {
   }
 
   const sorted = [...events].sort((a, b) => {
-    const startDiff = new Date(a.startDate) - new Date(b.startDate);
-    if (startDiff !== 0) {
-      return startDiff;
+    const aStart = parseISODateOnly(a.startDate);
+    const bStart = parseISODateOnly(b.startDate);
+    if (aStart && bStart) {
+      const startDiff = aStart - bStart;
+      if (startDiff !== 0) {
+        return startDiff;
+      }
+    } else if (aStart) {
+      return -1;
+    } else if (bStart) {
+      return 1;
     }
-    return new Date(a.endDate || a.startDate) - new Date(b.endDate || b.startDate);
+
+    const aEnd = parseISODateOnly(a.endDate || a.startDate);
+    const bEnd = parseISODateOnly(b.endDate || b.startDate);
+    if (aEnd && bEnd) {
+      return aEnd - bEnd;
+    }
+    if (aEnd) {
+      return -1;
+    }
+    if (bEnd) {
+      return 1;
+    }
+    return 0;
   });
 
   sorted.forEach(event => {
     const item = document.createElement('article');
     item.className = 'event-list-item';
-    const accent = event.category?.color || '#38bdf8';
+    const category = resolveEventCategory(event);
+    const accent = category?.color || '#38bdf8';
     item.style.setProperty('--event-accent', accent);
     item.style.setProperty('--event-accent-soft', hexToRgba(accent, 0.25));
 
@@ -232,7 +312,7 @@ function renderEventList() {
     titleRow.className = 'event-title';
     const emojiSpan = document.createElement('span');
     emojiSpan.className = 'emoji';
-    emojiSpan.textContent = event.category?.emoji || '📌';
+    emojiSpan.textContent = category?.emoji || '📌';
     const titleText = document.createElement('span');
     titleText.textContent = event.title;
     titleRow.appendChild(emojiSpan);
@@ -243,7 +323,7 @@ function renderEventList() {
     const dateLabel = document.createElement('span');
     dateLabel.textContent = formatDateRange(event.startDate, event.endDate);
     const categoryLabel = document.createElement('span');
-    categoryLabel.textContent = event.category ? event.category.name : 'Uncategorized';
+    categoryLabel.textContent = category ? category.name : 'Uncategorized';
     metaRow.appendChild(dateLabel);
     metaRow.appendChild(categoryLabel);
 
@@ -257,13 +337,26 @@ function renderEventList() {
       item.appendChild(description);
     }
 
+    const actions = document.createElement('div');
+    actions.className = 'event-actions';
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'event-delete';
+    deleteButton.textContent = 'Delete';
+    deleteButton.dataset.eventId = event.id;
+    actions.appendChild(deleteButton);
+    item.appendChild(actions);
+
     eventListPanel.appendChild(item);
   });
 }
 
 function formatDateRange(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
+  const start = parseISODateOnly(startDate);
+  const end = parseISODateOnly(endDate || startDate);
+  if (!start || !end) {
+    return [startDate, endDate].filter(Boolean).join(' → ');
+  }
   const sameDay = start.toDateString() === end.toDateString();
   const options = { month: 'short', day: 'numeric' };
   if (sameDay) {
@@ -276,8 +369,17 @@ function formatDateRange(startDate, endDate) {
 }
 
 function hexToRgba(hex, alpha = 1) {
-  if (!hex) {
+  const rgb = parseHexColor(hex);
+  if (!rgb) {
     return `rgba(148, 163, 184, ${alpha})`;
+  }
+  const { r, g, b } = rgb;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function parseHexColor(hex) {
+  if (!hex) {
+    return null;
   }
   let sanitized = hex.replace('#', '');
   if (sanitized.length === 3) {
@@ -287,13 +389,59 @@ function hexToRgba(hex, alpha = 1) {
       .join('');
   }
   if (sanitized.length !== 6) {
-    return `rgba(148, 163, 184, ${alpha})`;
+    return null;
   }
   const bigint = parseInt(sanitized, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return {
+    r: (bigint >> 16) & 255,
+    g: (bigint >> 8) & 255,
+    b: bigint & 255
+  };
+}
+
+function getReadableTextColor(hex) {
+  const rgb = parseHexColor(hex);
+  if (!rgb) {
+    return '#e2e8f0';
+  }
+  const { r, g, b } = rgb;
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance > 0.6 ? '#0f172a' : '#f8fafc';
+}
+
+function updateCategoryColorPreview() {
+  if (!categoryColorSelect) {
+    return;
+  }
+  let value = categoryColorSelect.value;
+  if (!value && COLOR_PALETTE.length) {
+    value = COLOR_PALETTE[0].value;
+    categoryColorSelect.value = value;
+  }
+  if (!value) {
+    return;
+  }
+  categoryColorSelect.style.background = `linear-gradient(135deg, ${hexToRgba(
+    value,
+    0.65
+  )} 0%, ${hexToRgba(value, 0.95)} 100%)`;
+  categoryColorSelect.style.color = getReadableTextColor(value);
+  categoryColorSelect.style.boxShadow = `inset 0 0 0 1px ${hexToRgba(value, 0.4)}`;
+}
+
+function resolveEventCategory(event) {
+  return event.category || categories.find(category => category.id === event.categoryId) || null;
+}
+
+function showEventFeedback(message, success = false) {
+  if (!eventFeedback) {
+    return;
+  }
+  eventFeedback.textContent = message;
+  eventFeedback.classList.toggle('success', Boolean(success));
+  if (!success) {
+    eventFeedback.classList.remove('success');
+  }
 }
 
 prevMonthBtn.addEventListener('click', () => {
@@ -308,8 +456,7 @@ nextMonthBtn.addEventListener('click', () => {
 
 eventForm.addEventListener('submit', async event => {
   event.preventDefault();
-  eventFeedback.textContent = '';
-  eventFeedback.classList.remove('success');
+  showEventFeedback('');
 
   const formData = new FormData(eventForm);
   const payload = Object.fromEntries(formData.entries());
@@ -327,12 +474,40 @@ eventForm.addEventListener('submit', async event => {
     renderEventList();
     eventForm.reset();
     populateCategorySelect();
-    eventFeedback.textContent = 'Event saved!';
-    eventFeedback.classList.add('success');
+    showEventFeedback('Event saved!', true);
   } catch (error) {
-    eventFeedback.textContent = error.message;
+    showEventFeedback(error.message);
   }
 });
+
+if (eventListPanel) {
+  eventListPanel.addEventListener('click', async evt => {
+    const deleteButton = evt.target.closest('.event-delete');
+    if (!deleteButton) {
+      return;
+    }
+    const { eventId } = deleteButton.dataset;
+    if (!eventId) {
+      return;
+    }
+    deleteButton.disabled = true;
+    deleteButton.textContent = 'Deleting…';
+    showEventFeedback('');
+    try {
+      await fetchJSON(`${API_BASE}/api/events/${eventId}`, {
+        method: 'DELETE'
+      });
+      events = events.filter(event => event.id !== eventId);
+      renderCalendar();
+      renderEventList();
+      showEventFeedback('Event deleted.', true);
+    } catch (error) {
+      deleteButton.disabled = false;
+      deleteButton.textContent = 'Delete';
+      showEventFeedback(error.message);
+    }
+  });
+}
 
 categoryForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -351,6 +526,7 @@ categoryForm.addEventListener('submit', async event => {
     populateCategorySelect();
     renderCategories();
     categoryForm.reset();
+    updateCategoryColorPreview();
     categoryFeedback.textContent = 'Category added!';
     categoryFeedback.classList.add('success');
   } catch (error) {
@@ -359,15 +535,21 @@ categoryForm.addEventListener('submit', async event => {
 });
 
 async function init() {
+  populateCategoryColorSelect();
   try {
     await loadCategories();
     await loadEvents();
   } catch (error) {
-    eventFeedback.textContent = error.message;
+    showEventFeedback(error.message);
   }
 
   const today = new Date();
   eventForm.startDate.valueAsDate = today;
+
+  if (categoryColorSelect) {
+    updateCategoryColorPreview();
+    categoryColorSelect.addEventListener('change', updateCategoryColorPreview);
+  }
 }
 
 init();
