@@ -213,6 +213,27 @@ body {
   margin: 0;
 }
 
+.event-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.event-delete {
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.event-delete:hover {
+  background: rgba(248, 113, 113, 0.35);
+  color: #fee2e2;
+}
+
 .card {
   background: rgba(15, 23, 42, 0.7);
   border-radius: 24px;
@@ -249,6 +270,13 @@ button {
   background: rgba(15, 23, 42, 0.9);
   color: inherit;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+}
+
+#category-color-select {
+  appearance: none;
+  background-size: cover;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 textarea {
