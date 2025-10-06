@@ -45,7 +45,7 @@ top of `client/main.js` to the deployed API origin (e.g., `https://your-domain.c
 
 ## Data storage
 
-Data is stored in `server/data.json`, which is created automatically on first run with a few sample categories. The application does not use an external database by default; the JSON file acts as the persistence layer. If you need cloud storage, point the server at a managed database or mount a persistent volume that keeps `data.json` between deployments.
+Data is stored in a JSON file that is created automatically on first run with a few sample categories. By default the file lives in `server/data.json`, but the server will write to `/data/data.json` when that directory exists (Railway mounts volumes there) or to whatever folder you set via the `CALENDAR_DATA_DIR`/`DATA_DIR` environment variables. The application does not use an external database by default; the JSON file acts as the persistence layer. If you need cloud storage, point the server at a managed database or mount a persistent volume that keeps the JSON file between deployments.
 
 ## Deployment guidance
 
@@ -57,7 +57,7 @@ prefer to call the script directly) so the platform runs the helper script
 committed at the repo root. The script changes into the `server/` directory,
 installs dependencies if needed, and starts the Node.js process. Expose port
 `4000` (or override it with the `PORT` environment variable) and mount a
-persistent volume to `server/data.json` so event data survives restarts.
+persistent volume to `/data` (or set `CALENDAR_DATA_DIR`) so event data survives restarts.
 
 Railway (and similar hosts) inject a `PORT` environment variable such as `8080`;
 the server automatically honors that value, which is why the logs read

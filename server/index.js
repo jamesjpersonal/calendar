@@ -4,10 +4,38 @@ const path = require('path');
 const { randomUUID } = require('crypto');
 
 const PORT = process.env.PORT || 4000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+
+function resolveDataDir() {
+  const fromEnv = process.env.CALENDAR_DATA_DIR || process.env.DATA_DIR;
+  if (fromEnv) {
+    return path.resolve(fromEnv);
+  }
+  const railwayVolume = '/data';
+  try {
+    const stats = fs.statSync(railwayVolume);
+    if (stats.isDirectory()) {
+      return railwayVolume;
+    }
+  } catch (error) {
+    // Ignore errors and fall back to the server directory.
+  }
+  return __dirname;
+}
+
+const DATA_DIR = resolveDataDir();
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const CLIENT_DIR = path.join(__dirname, '..', 'client');
 
+function ensureDataDir() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (error) {
+    throw new Error(`Failed to create data directory at ${DATA_DIR}: ${error.message}`);
+  }
+}
+
 function ensureDataFile() {
+  ensureDataDir();
   if (!fs.existsSync(DATA_FILE)) {
     const initial = {
       categories: [
