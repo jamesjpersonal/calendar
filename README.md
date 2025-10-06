@@ -45,7 +45,7 @@ top of `client/main.js` to the deployed API origin (e.g., `https://your-domain.c
 
 ## Data storage
 
-Data is stored in a JSON file that is created automatically on first run with a few sample categories. By default the file lives in `server/data.json`, but the server will write to `/data/data.json` when that directory exists (Railway mounts volumes there) or to whatever folder you set via the `CALENDAR_DATA_DIR`/`DATA_DIR` environment variables. The application does not use an external database by default; the JSON file acts as the persistence layer. If you need cloud storage, point the server at a managed database or mount a persistent volume that keeps the JSON file between deployments.
+Data is stored in a JSON file that is created automatically on first run with a few sample categories. By default the file lives in `server/data.json`, but the server will write to `/data/data.json` when that directory exists (Railway mounts volumes there) or to whatever folder you set via the `CALENDAR_DATA_DIR`/`DATA_DIR` environment variables. You can also point the server at an explicit file path with `CALENDAR_DATA_FILE` (or `DATA_FILE`) if your platform mounts a specific file instead of a directory. All writes are performed atomically so data persists safely across deployments as long as the target path is on a persistent volume. The application does not use an external database by default; the JSON file acts as the persistence layer. If you need cloud storage, point the server at a managed database or mount a persistent volume that keeps the JSON file between deployments.
 
 ## Deployment guidance
 

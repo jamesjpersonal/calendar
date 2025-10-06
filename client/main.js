@@ -37,6 +37,21 @@ let currentDate = new Date();
 let categories = [];
 let events = [];
 
+function parseISODateOnly(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+  const parts = value.split('-');
+  if (parts.length !== 3) {
+    return null;
+  }
+  const [year, month, day] = parts.map(Number);
+  if ([year, month, day].some(number => Number.isNaN(number))) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
 WEEKDAYS.forEach(day => {
   const span = document.createElement('span');
   span.textContent = day;
@@ -199,8 +214,11 @@ function renderCalendar() {
     eventContainer.className = 'event-list';
 
     const dayEvents = events.filter(event => {
-      const start = new Date(event.startDate);
-      const end = new Date(event.endDate || event.startDate);
+      const start = parseISODateOnly(event.startDate);
+      const end = parseISODateOnly(event.endDate || event.startDate);
+      if (!start || !end) {
+        return false;
+      }
       return start <= date && date <= end;
     });
 
@@ -255,11 +273,31 @@ function renderEventList() {
   }
 
   const sorted = [...events].sort((a, b) => {
-    const startDiff = new Date(a.startDate) - new Date(b.startDate);
-    if (startDiff !== 0) {
-      return startDiff;
+    const aStart = parseISODateOnly(a.startDate);
+    const bStart = parseISODateOnly(b.startDate);
+    if (aStart && bStart) {
+      const startDiff = aStart - bStart;
+      if (startDiff !== 0) {
+        return startDiff;
+      }
+    } else if (aStart) {
+      return -1;
+    } else if (bStart) {
+      return 1;
     }
-    return new Date(a.endDate || a.startDate) - new Date(b.endDate || b.startDate);
+
+    const aEnd = parseISODateOnly(a.endDate || a.startDate);
+    const bEnd = parseISODateOnly(b.endDate || b.startDate);
+    if (aEnd && bEnd) {
+      return aEnd - bEnd;
+    }
+    if (aEnd) {
+      return -1;
+    }
+    if (bEnd) {
+      return 1;
+    }
+    return 0;
   });
 
   sorted.forEach(event => {
@@ -314,8 +352,11 @@ function renderEventList() {
 }
 
 function formatDateRange(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate || startDate);
+  const start = parseISODateOnly(startDate);
+  const end = parseISODateOnly(endDate || startDate);
+  if (!start || !end) {
+    return [startDate, endDate].filter(Boolean).join(' → ');
+  }
   const sameDay = start.toDateString() === end.toDateString();
   const options = { month: 'short', day: 'numeric' };
   if (sameDay) {

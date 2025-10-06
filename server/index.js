@@ -22,8 +22,17 @@ function resolveDataDir() {
   return __dirname;
 }
 
-const DATA_DIR = resolveDataDir();
-const DATA_FILE = path.join(DATA_DIR, 'data.json');
+function resolveDataFile() {
+  const fromEnv = process.env.CALENDAR_DATA_FILE || process.env.DATA_FILE;
+  if (fromEnv) {
+    return path.resolve(fromEnv);
+  }
+  const dir = resolveDataDir();
+  return path.join(dir, 'data.json');
+}
+
+const DATA_FILE = resolveDataFile();
+const DATA_DIR = path.dirname(DATA_FILE);
 const CLIENT_DIR = path.join(__dirname, '..', 'client');
 
 function ensureDataDir() {
@@ -56,7 +65,20 @@ function readData() {
 }
 
 function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  ensureDataDir();
+  const payload = JSON.stringify(data, null, 2);
+  const tempFile = `${DATA_FILE}.tmp`;
+  try {
+    fs.writeFileSync(tempFile, payload);
+    fs.renameSync(tempFile, DATA_FILE);
+  } catch (error) {
+    try {
+      fs.unlinkSync(tempFile);
+    } catch (cleanupError) {
+      // Ignore cleanup errors.
+    }
+    throw new Error(`Failed to persist data: ${error.message}`);
+  }
 }
 
 function sendJson(res, status, payload) {
@@ -181,7 +203,12 @@ function handleApi(req, res) {
           color: body.color
         };
         data.categories.push(newCategory);
-        writeData(data);
+        try {
+          writeData(data);
+        } catch (error) {
+          sendError(res, 500, error.message);
+          return;
+        }
         sendJson(res, 201, newCategory);
       })
       .catch(err => {
@@ -218,7 +245,12 @@ function handleApi(req, res) {
           categoryId: body.categoryId
         };
         data.events.push(newEvent);
-        writeData(data);
+        try {
+          writeData(data);
+        } catch (error) {
+          sendError(res, 500, error.message);
+          return;
+        }
         sendJson(res, 201, {
           ...newEvent,
           category: data.categories.find(cat => cat.id === newEvent.categoryId) || null
@@ -254,7 +286,12 @@ function handleApi(req, res) {
           }
           merged.endDate = merged.endDate || merged.startDate;
           data.events[existingIndex] = merged;
-          writeData(data);
+          try {
+            writeData(data);
+          } catch (error) {
+            sendError(res, 500, error.message);
+            return;
+          }
           sendJson(res, 200, {
             ...merged,
             category: data.categories.find(cat => cat.id === merged.categoryId) || null
@@ -274,7 +311,12 @@ function handleApi(req, res) {
         return true;
       }
       const [removed] = data.events.splice(existingIndex, 1);
-      writeData(data);
+      try {
+        writeData(data);
+      } catch (error) {
+        sendError(res, 500, error.message);
+        return true;
+      }
       sendJson(res, 200, removed);
       return true;
     }
