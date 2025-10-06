@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emoji Calendar</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Emoji Calendar</h1>
+    <div class="month-switcher">
+      <button id="prev-month" aria-label="Previous month">◀</button>
+      <div id="current-month" aria-live="polite"></div>
+      <button id="next-month" aria-label="Next month">▶</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="calendar-card">
+      <div class="weekday-row" id="weekday-row"></div>
+      <div class="calendar-grid" id="calendar-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="sidebar">
+      <section class="card">
+        <h2>Add Event</h2>
+        <form id="event-form" class="stack">
+          <label>
+            Title
+            <input type="text" name="title" required />
+          </label>
+          <label>
+            Date
+            <input type="date" name="startDate" required />
+          </label>
+          <label>
+            End date
+            <input type="date" name="endDate" />
+          </label>
+          <label>
+            Category
+            <select name="categoryId" id="category-select" required></select>
+          </label>
+          <label>
+            Description
+            <textarea name="description" rows="3" placeholder="Optional details..."></textarea>
+          </label>
+          <button type="submit">Save event</button>
+          <p class="form-feedback" id="event-feedback" role="alert"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Create Category</h2>
+        <form id="category-form" class="stack">
+          <label>
+            Name
+            <input type="text" name="name" required />
+          </label>
+          <label>
+            Emoji
+            <input type="text" name="emoji" maxlength="2" placeholder="😊" required />
+          </label>
+          <label>
+            Color
+            <input type="color" name="color" value="#6c5ce7" required />
+          </label>
+          <button type="submit">Add category</button>
+          <p class="form-feedback" id="category-feedback" role="alert"></p>
+        </form>
+        <div class="category-list" id="category-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <template id="event-template">
+    <div class="event-pill">
+      <span class="emoji"></span>
+      <span class="text"></span>
+    </div>
+  </template>
+
+  <script src="main.js" type="module"></script>
+</body>
+</html>
