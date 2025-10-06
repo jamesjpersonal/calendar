@@ -16,6 +16,7 @@ const eventListPanel = document.getElementById('event-list-panel');
 const API_BASE = '';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MAX_VISIBLE_DAY_EVENTS = 3;
 const COLOR_PALETTE = [
   { name: 'Sky', value: '#38bdf8' },
   { name: 'Ocean', value: '#0ea5e9' },
@@ -188,12 +189,73 @@ function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function groupEventsByDay(allEvents) {
+  const map = new Map();
+  allEvents.forEach(event => {
+    const start = parseISODateOnly(event.startDate);
+    const end = parseISODateOnly(event.endDate || event.startDate);
+    if (!start || !end) {
+      return;
+    }
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const key = formatDateKey(cursor);
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key).push(event);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  });
+  return map;
+}
+
+function sortEventsForDisplay(dayEvents) {
+  return [...dayEvents].sort((a, b) => {
+    const aStart = parseISODateOnly(a.startDate);
+    const bStart = parseISODateOnly(b.startDate);
+    if (aStart && bStart && aStart.getTime() !== bStart.getTime()) {
+      return aStart - bStart;
+    }
+    const aEnd = parseISODateOnly(a.endDate || a.startDate);
+    const bEnd = parseISODateOnly(b.endDate || b.startDate);
+    if (aEnd && bEnd && aEnd.getTime() !== bEnd.getTime()) {
+      return aEnd - bEnd;
+    }
+    return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+  });
+}
+
+function buildEventPill(event) {
+  const pill = eventTemplate.content.firstElementChild.cloneNode(true);
+  const emojiSpan = pill.querySelector('.emoji');
+  const textSpan = pill.querySelector('.text');
+  const category = resolveEventCategory(event);
+  const color = category?.color || '#cbd5f5';
+  const emoji = category?.emoji || '📌';
+
+  pill.style.background = color;
+  pill.style.color = getReadableTextColor(color);
+  emojiSpan.textContent = emoji;
+  textSpan.textContent = event.title;
+  pill.title = event.title;
+  return pill;
+}
+
 function renderCalendar() {
   currentMonthLabel.textContent = formatMonthLabel(currentDate);
   calendarGrid.innerHTML = '';
 
   const today = new Date();
   const days = getCalendarDays(currentDate);
+  const eventsByDay = groupEventsByDay(events);
 
   days.forEach(({ date, outside }) => {
     const cell = document.createElement('div');
@@ -213,35 +275,37 @@ function renderCalendar() {
     const eventContainer = document.createElement('div');
     eventContainer.className = 'event-list';
 
-    const dayEvents = events.filter(event => {
-      const start = parseISODateOnly(event.startDate);
-      const end = parseISODateOnly(event.endDate || event.startDate);
-      if (!start || !end) {
-        return false;
-      }
-      return start <= date && date <= end;
-    });
+    const key = formatDateKey(date);
+    const dayEvents = sortEventsForDisplay(eventsByDay.get(key) || []);
 
-    const colors = dayEvents
-      .map(event => resolveEventCategory(event)?.color)
-      .filter(Boolean);
+    const colors = dayEvents.map(event => resolveEventCategory(event)?.color).filter(Boolean);
     if (colors.length > 0) {
       applyDayAccent(cell, colors);
+      cell.setAttribute('data-event-count', String(dayEvents.length));
+      const titles = dayEvents.map(event => event.title).join(', ');
+      cell.setAttribute('aria-label', `${date.toDateString()}: ${titles}`);
     }
 
-    dayEvents.forEach(event => {
-      const pill = eventTemplate.content.firstElementChild.cloneNode(true);
-      const emojiSpan = pill.querySelector('.emoji');
-      const textSpan = pill.querySelector('.text');
-      const category = resolveEventCategory(event);
-      const color = category?.color || '#cbd5f5';
-      const emoji = category?.emoji || '📌';
+    if (dayEvents.length) {
+      const fragment = document.createDocumentFragment();
+      dayEvents.slice(0, MAX_VISIBLE_DAY_EVENTS).forEach(event => {
+        fragment.appendChild(buildEventPill(event));
+      });
+      eventContainer.appendChild(fragment);
 
-      pill.style.background = color;
-      emojiSpan.textContent = emoji;
-      textSpan.textContent = event.title;
-      eventContainer.appendChild(pill);
-    });
+      const remaining = dayEvents.length - MAX_VISIBLE_DAY_EVENTS;
+      if (remaining > 0) {
+        const morePill = document.createElement('div');
+        morePill.className = 'event-pill more-indicator';
+        morePill.textContent = `+${remaining} more`;
+        morePill.title = dayEvents
+          .slice(MAX_VISIBLE_DAY_EVENTS)
+          .map(event => event.title)
+          .join('\n');
+        morePill.setAttribute('aria-label', `${remaining} more events`);
+        eventContainer.appendChild(morePill);
+      }
+    }
 
     cell.appendChild(eventContainer);
     calendarGrid.appendChild(cell);
@@ -249,17 +313,19 @@ function renderCalendar() {
 }
 
 function applyDayAccent(cell, colors) {
-  const [primary] = colors;
+  const palette = Array.from(new Set(colors));
+  const [primary] = palette;
   cell.classList.add('has-events');
   cell.style.setProperty('--event-accent', primary);
   cell.style.setProperty('--event-accent-soft', hexToRgba(primary, 0.35));
 
-  if (colors.length > 1) {
-    const secondary = colors[1];
-    const gradient = `linear-gradient(135deg, ${hexToRgba(primary, 0.4)} 0%, ${hexToRgba(
-      secondary,
-      0.25
-    )} 55%, rgba(30, 41, 59, 0.92) 100%)`;
+  if (palette.length > 1) {
+    const stops = palette.slice(0, 4).map((color, index) => {
+      const ratio = Math.min(80, 20 + index * 20);
+      return `${hexToRgba(color, 0.35 - index * 0.05)} ${ratio}%`;
+    });
+    stops.push('rgba(30, 41, 59, 0.92) 100%');
+    const gradient = `linear-gradient(135deg, ${stops.join(', ')})`;
     cell.style.background = gradient;
   }
 }
