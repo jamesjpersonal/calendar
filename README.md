@@ -10,9 +10,16 @@ calendar/
 └── server/      # Node.js backend with JSON persistence
 ```
 
+## Features
+
+- Emoji-powered categories with configurable colors.
+- Month view calendar that filters and displays events with their category styles.
+- Create, update, and delete events inline with optional descriptions and date ranges.
+
 ## Getting started
 
-1. Install dependencies (none required beyond Node.js 18+).
+1. Install dependencies (none required beyond Node.js 18+, but running `npm install` in
+   `server/` will create a lockfile for deployment platforms that expect one).
 2. Start the backend server:
 
    ```bash
@@ -23,6 +30,9 @@ calendar/
    The API and static site are served from `http://localhost:4000` by default.
 
 3. Open a browser to `http://localhost:4000` to use the calendar UI.
+
+To host the client separately from the backend, update the `API_BASE` constant near the
+top of `client/main.js` to the deployed API origin (e.g., `https://your-domain.com`).
 
 ## API overview
 
@@ -46,6 +56,14 @@ helper script committed at the repo root. The script changes into the
 process. Expose port `4000` (or override it with the `PORT` environment
 variable) and mount a persistent volume to `server/data.json` so event data
 survives restarts.
+
+The `start.sh` script also works for other platforms that allow a shell entrypoint
+(e.g., Fly.io, Render, custom Docker images). It ensures dependencies are installed
+before executing `npm start`, so you can use it for local smoke tests as well:
+
+```bash
+./start.sh
+```
 
 Deploy the static client separately (e.g., via Netlify/Vercel) and point the
 `API_BASE` constant in `client/main.js` at the Railway service URL.
