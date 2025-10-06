@@ -1,0 +1,13 @@
+{
+  "name": "calendar-server",
+  "version": "1.0.0",
+  "description": "Simple calendar API server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs"
+}

@@ -1,0 +1,23 @@
+{
+  "categories": [
+    {
+      "id": "default-personal",
+      "name": "Personal",
+      "emoji": "🏡",
+      "color": "#4caf50"
+    },
+    {
+      "id": "default-work",
+      "name": "Work",
+      "emoji": "💼",
+      "color": "#2196f3"
+    },
+    {
+      "id": "default-social",
+      "name": "Social",
+      "emoji": "🎉",
+      "color": "#ff9800"
+    }
+  ],
+  "events": []
+}
