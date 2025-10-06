@@ -10,6 +10,7 @@ const categoryFeedback = document.getElementById('category-feedback');
 const categorySelect = document.getElementById('category-select');
 const categoryList = document.getElementById('category-list');
 const eventTemplate = document.getElementById('event-template');
+const eventListPanel = document.getElementById('event-list-panel');
 
 const API_BASE = '';
 
@@ -49,6 +50,7 @@ async function loadCategories() {
 async function loadEvents() {
   events = await fetchJSON(`${API_BASE}/api/events`);
   renderCalendar();
+  renderEventList();
 }
 
 function populateCategorySelect() {
@@ -162,6 +164,13 @@ function renderCalendar() {
       return start <= date && date <= end;
     });
 
+    const colors = dayEvents
+      .map(event => event.category?.color)
+      .filter(Boolean);
+    if (colors.length > 0) {
+      applyDayAccent(cell, colors);
+    }
+
     dayEvents.forEach(event => {
       const pill = eventTemplate.content.firstElementChild.cloneNode(true);
       const emojiSpan = pill.querySelector('.emoji');
@@ -178,6 +187,113 @@ function renderCalendar() {
     cell.appendChild(eventContainer);
     calendarGrid.appendChild(cell);
   });
+}
+
+function applyDayAccent(cell, colors) {
+  const [primary] = colors;
+  cell.classList.add('has-events');
+  cell.style.setProperty('--event-accent', primary);
+  cell.style.setProperty('--event-accent-soft', hexToRgba(primary, 0.35));
+
+  if (colors.length > 1) {
+    const secondary = colors[1];
+    const gradient = `linear-gradient(135deg, ${hexToRgba(primary, 0.4)} 0%, ${hexToRgba(
+      secondary,
+      0.25
+    )} 55%, rgba(30, 41, 59, 0.92) 100%)`;
+    cell.style.background = gradient;
+  }
+}
+
+function renderEventList() {
+  if (!eventListPanel) return;
+  eventListPanel.innerHTML = '';
+
+  if (!events.length) {
+    return;
+  }
+
+  const sorted = [...events].sort((a, b) => {
+    const startDiff = new Date(a.startDate) - new Date(b.startDate);
+    if (startDiff !== 0) {
+      return startDiff;
+    }
+    return new Date(a.endDate || a.startDate) - new Date(b.endDate || b.startDate);
+  });
+
+  sorted.forEach(event => {
+    const item = document.createElement('article');
+    item.className = 'event-list-item';
+    const accent = event.category?.color || '#38bdf8';
+    item.style.setProperty('--event-accent', accent);
+    item.style.setProperty('--event-accent-soft', hexToRgba(accent, 0.25));
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'event-title';
+    const emojiSpan = document.createElement('span');
+    emojiSpan.className = 'emoji';
+    emojiSpan.textContent = event.category?.emoji || '📌';
+    const titleText = document.createElement('span');
+    titleText.textContent = event.title;
+    titleRow.appendChild(emojiSpan);
+    titleRow.appendChild(titleText);
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'event-meta';
+    const dateLabel = document.createElement('span');
+    dateLabel.textContent = formatDateRange(event.startDate, event.endDate);
+    const categoryLabel = document.createElement('span');
+    categoryLabel.textContent = event.category ? event.category.name : 'Uncategorized';
+    metaRow.appendChild(dateLabel);
+    metaRow.appendChild(categoryLabel);
+
+    item.appendChild(titleRow);
+    item.appendChild(metaRow);
+
+    if (event.description) {
+      const description = document.createElement('p');
+      description.className = 'event-description';
+      description.textContent = event.description;
+      item.appendChild(description);
+    }
+
+    eventListPanel.appendChild(item);
+  });
+}
+
+function formatDateRange(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate || startDate);
+  const sameDay = start.toDateString() === end.toDateString();
+  const options = { month: 'short', day: 'numeric' };
+  if (sameDay) {
+    return start.toLocaleDateString(undefined, options);
+  }
+  return `${start.toLocaleDateString(undefined, options)} → ${end.toLocaleDateString(
+    undefined,
+    options
+  )}`;
+}
+
+function hexToRgba(hex, alpha = 1) {
+  if (!hex) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  let sanitized = hex.replace('#', '');
+  if (sanitized.length === 3) {
+    sanitized = sanitized
+      .split('')
+      .map(ch => ch + ch)
+      .join('');
+  }
+  if (sanitized.length !== 6) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  const bigint = parseInt(sanitized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 prevMonthBtn.addEventListener('click', () => {
@@ -208,6 +324,7 @@ eventForm.addEventListener('submit', async event => {
     });
     events.push(created);
     renderCalendar();
+    renderEventList();
     eventForm.reset();
     populateCategorySelect();
     eventFeedback.textContent = 'Event saved!';

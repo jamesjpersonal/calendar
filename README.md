@@ -13,8 +13,9 @@ calendar/
 ## Features
 
 - Emoji-powered categories with configurable colors.
-- Month view calendar that filters and displays events with their category styles.
-- Create, update, and delete events inline with optional descriptions and date ranges.
+- Month view calendar that renders each event directly on the grid with its category accent.
+- Scrollable event list that summarizes upcoming plans with dates, categories, and notes.
+- Create events with optional descriptions and date ranges from the sidebar form.
 
 ## Getting started
 
@@ -42,7 +43,9 @@ top of `client/main.js` to the deployed API origin (e.g., `https://your-domain.c
 - `PUT /api/events/:id` – update an event.
 - `DELETE /api/events/:id` – remove an event.
 
-Data is stored in `server/data.json`, which is created automatically on first run with a few sample categories.
+## Data storage
+
+Data is stored in `server/data.json`, which is created automatically on first run with a few sample categories. The application does not use an external database by default; the JSON file acts as the persistence layer. If you need cloud storage, point the server at a managed database or mount a persistent volume that keeps `data.json` between deployments.
 
 ## Deployment guidance
 
@@ -55,6 +58,12 @@ committed at the repo root. The script changes into the `server/` directory,
 installs dependencies if needed, and starts the Node.js process. Expose port
 `4000` (or override it with the `PORT` environment variable) and mount a
 persistent volume to `server/data.json` so event data survives restarts.
+
+Railway (and similar hosts) inject a `PORT` environment variable such as `8080`;
+the server automatically honors that value, which is why the logs read
+`Server running at http://localhost:8080`. You do not need to change any other
+configuration—just make sure the client points at the public URL Railway assigns
+to your service.
 
 The `start.sh` script also works for other platforms that allow a shell entrypoint
 (e.g., Fly.io, Render, custom Docker images). It ensures dependencies are installed
