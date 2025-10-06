@@ -8,27 +8,35 @@ const PORT = process.env.PORT || 4000;
 function resolveDataDir() {
   const fromEnv = process.env.CALENDAR_DATA_DIR || process.env.DATA_DIR;
   if (fromEnv) {
-    return path.resolve(fromEnv);
+    const resolved = path.resolve(fromEnv);
+    console.log(`[data] resolveDataDir using environment variable value ${fromEnv} -> ${resolved}`);
+    return resolved;
   }
   const railwayVolume = '/data';
   try {
     const stats = fs.statSync(railwayVolume);
     if (stats.isDirectory()) {
+      console.log(`[data] resolveDataDir using railway volume ${railwayVolume}`);
       return railwayVolume;
     }
   } catch (error) {
     // Ignore errors and fall back to the server directory.
   }
+  console.log(`[data] resolveDataDir falling back to server directory ${__dirname}`);
   return __dirname;
 }
 
 function resolveDataFile() {
   const fromEnv = process.env.CALENDAR_DATA_FILE || process.env.DATA_FILE;
   if (fromEnv) {
-    return path.resolve(fromEnv);
+    const resolved = path.resolve(fromEnv);
+    console.log(`[data] resolveDataFile using environment variable value ${fromEnv} -> ${resolved}`);
+    return resolved;
   }
   const dir = resolveDataDir();
-  return path.join(dir, 'data.json');
+  const resolved = path.join(dir, 'data.json');
+  console.log(`[data] resolveDataFile defaulting to ${resolved}`);
+  return resolved;
 }
 
 const DATA_FILE = resolveDataFile();
