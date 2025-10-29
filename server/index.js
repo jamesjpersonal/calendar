@@ -225,6 +225,33 @@ function handleApi(req, res) {
     return true;
   }
 
+  const categoryIdMatch = url.pathname.match(/^\/api\/categories\/([^/]+)$/);
+  if (categoryIdMatch) {
+    const categoryId = decodeURIComponent(categoryIdMatch[1]);
+
+    if (req.method === 'DELETE') {
+      const data = readData();
+      const existingIndex = data.categories.findIndex(category => category.id === categoryId);
+      if (existingIndex === -1) {
+        sendError(res, 404, 'Category not found');
+        return true;
+      }
+      const [removedCategory] = data.categories.splice(existingIndex, 1);
+      const removedEvents = data.events.filter(event => event.categoryId === categoryId);
+      if (removedEvents.length > 0) {
+        data.events = data.events.filter(event => event.categoryId !== categoryId);
+      }
+      try {
+        writeData(data);
+      } catch (error) {
+        sendError(res, 500, error.message);
+        return true;
+      }
+      sendJson(res, 200, { category: removedCategory, removedEvents });
+      return true;
+    }
+  }
+
   if (url.pathname === '/api/events' && req.method === 'GET') {
     const data = readData();
     const eventsWithCategory = data.events.map(event => ({
