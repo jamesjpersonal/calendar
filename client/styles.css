@@ -344,6 +344,25 @@ button[type='submit']:hover {
   font-weight: 600;
 }
 
+.category-actions {
+  margin-left: auto;
+}
+
+.category-delete-button {
+  background: transparent;
+  border: none;
+  color: #fca5a5;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.category-delete-button:hover,
+.category-delete-button:focus {
+  color: #f87171;
+  outline: none;
+}
+
 @media (max-width: 1024px) {
   .layout {
     grid-template-columns: 1fr;

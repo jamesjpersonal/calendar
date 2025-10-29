@@ -12,6 +12,7 @@ const categoryColorSelect = document.getElementById('category-color-select');
 const categoryList = document.getElementById('category-list');
 const eventTemplate = document.getElementById('event-template');
 const eventListPanel = document.getElementById('event-list-panel');
+const CATEGORY_DELETE_CONFIRMATION = 'Deleting a category will also remove all events assigned to it. Continue?';
 
 const API_BASE = '';
 
@@ -139,10 +140,51 @@ function renderCategories() {
     info.appendChild(name);
     info.appendChild(color);
 
+    const actions = document.createElement('div');
+    actions.className = 'category-actions';
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'category-delete-button';
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', () => {
+      handleDeleteCategory(category.id);
+    });
+    actions.appendChild(deleteButton);
+
     item.appendChild(swatch);
     item.appendChild(info);
+    item.appendChild(actions);
     categoryList.appendChild(item);
   });
+}
+
+async function handleDeleteCategory(categoryId) {
+  if (!categoryId) {
+    return;
+  }
+  if (!window.confirm(CATEGORY_DELETE_CONFIRMATION)) {
+    return;
+  }
+  try {
+    await fetchJSON(`${API_BASE}/api/categories/${encodeURIComponent(categoryId)}`, {
+      method: 'DELETE'
+    });
+    categories = categories.filter(category => category.id !== categoryId);
+    renderCategories();
+    populateCategorySelect();
+    await loadEvents();
+    if (categoryFeedback) {
+      categoryFeedback.textContent = 'Category deleted successfully';
+      categoryFeedback.classList.remove('success');
+      void categoryFeedback.offsetWidth;
+      categoryFeedback.classList.add('success');
+    }
+  } catch (error) {
+    if (categoryFeedback) {
+      categoryFeedback.textContent = error.message;
+      categoryFeedback.classList.remove('success');
+    }
+  }
 }
 
 function formatMonthLabel(date) {
